@@ -10,6 +10,20 @@
 **/.env
 **/.env.*
 !**/.env.example
+**/.envrc
+**/.python-version
+
+# Private keys and certs
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/*.crt
+**/*.cer
+**/id_rsa
+**/id_dsa
+**/id_ed25519
+**/.ssh/
 
 # Logs
 **/npm-debug.log*
