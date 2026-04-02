@@ -1,0 +1,130 @@
+const User = require("../models/User");
+const Playlist = require("../models/Playlist");
+const Video = require("../models/Video");
+const asyncHandler = require("../utils/asyncHandler");
+const {
+  calculatePlaylistMetrics,
+  estimateCompletionDays,
+  updateStreak,
+} = require("../utils/progressUtils");
+
+const updateVideoProgress = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
+  const { isCompleted, weight } = req.body;
+
+  const video = await Video.findById(videoId).populate("playlist");
+  if (!video) {
+    const error = new Error("Video not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (String(video.playlist.user) !== String(req.user._id)) {
+    const error = new Error("Forbidden");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  if (typeof weight !== "undefined") {
+    video.weight = Number(weight);
+  }
+
+  if (typeof isCompleted === "boolean") {
+    const wasCompleted = video.isCompleted;
+    video.isCompleted = isCompleted;
+    video.completedAt = isCompleted ? new Date() : null;
+
+    if (!wasCompleted && isCompleted) {
+      const streakResult = updateStreak(
+        req.user.lastStudyDate,
+        req.user.streakCount,
+        video.completedAt
+      );
+
+      await User.findByIdAndUpdate(req.user._id, {
+        streakCount: streakResult.streakCount,
+        lastStudyDate: streakResult.lastStudyDate,
+      });
+    }
+  }
+
+  await video.save();
+
+  res.json({
+    success: true,
+    message: "Video progress updated",
+  });
+});
+
+const getPlaylistAnalytics = asyncHandler(async (req, res) => {
+  const playlist = await Playlist.findOne({
+    _id: req.params.playlistId,
+    user: req.user._id,
+  });
+
+  if (!playlist) {
+    const error = new Error("Playlist not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const videos = await Video.find({ playlist: playlist._id });
+  const metrics = calculatePlaylistMetrics(videos);
+
+  const daysRemaining = estimateCompletionDays(
+    metrics.remainingDurationSeconds,
+    req.user.dailyStudyMinutes
+  );
+
+  const suggestions = [];
+  if (daysRemaining > 7) {
+    suggestions.push("Increase daily study time by 15-20 minutes to reduce completion time.");
+  }
+
+  if (metrics.trueProgressPercent < metrics.rawProgressPercent) {
+    suggestions.push("Focus on high-weight videos first to improve true progress faster.");
+  }
+
+  res.json({
+    success: true,
+    data: {
+      playlistId: playlist._id,
+      title: playlist.title,
+      ...metrics,
+      dailyStudyMinutes: req.user.dailyStudyMinutes,
+      estimatedDaysRemaining: daysRemaining,
+      predictionMessage: `You will finish this course in ${daysRemaining} day(s) at current pace.`,
+      streakCount: req.user.streakCount,
+      suggestions,
+    },
+  });
+});
+
+const updateDailyStudyMinutes = asyncHandler(async (req, res) => {
+  const { dailyStudyMinutes } = req.body;
+
+  if (!dailyStudyMinutes || Number(dailyStudyMinutes) < 5) {
+    const error = new Error("dailyStudyMinutes must be at least 5");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    { dailyStudyMinutes: Number(dailyStudyMinutes) },
+    { new: true }
+  );
+
+  res.json({
+    success: true,
+    data: {
+      dailyStudyMinutes: user.dailyStudyMinutes,
+    },
+  });
+});
+
+module.exports = {
+  updateVideoProgress,
+  getPlaylistAnalytics,
+  updateDailyStudyMinutes,
+};
