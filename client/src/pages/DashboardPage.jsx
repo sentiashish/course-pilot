@@ -1,4 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import Navbar from "../components/Navbar";
 import ProgressBar from "../components/ProgressBar";
 import Sidebar from "../components/Sidebar";
@@ -9,10 +19,40 @@ import { secondsToHuman } from "../utils/helpers";
 const getErrorMessage = (error) =>
   error?.response?.data?.message || "Something went wrong. Please try again.";
 
+const getPlaylistIdFromUrl = (playlistUrl) => {
+  try {
+    const parsed = new URL(playlistUrl);
+    const listId = parsed.searchParams.get("list");
+    return listId;
+  } catch {
+    return null;
+  }
+};
+
+const ProgressTooltip = ({ active, payload }) => {
+  if (!active || !payload?.length) {
+    return null;
+  }
+
+  const point = payload[0]?.payload;
+  if (!point) {
+    return null;
+  }
+
+  return (
+    <div className="chart-tooltip">
+      <strong>{point.name}</strong>
+      <p>{point.value}% complete</p>
+    </div>
+  );
+};
+
 const DashboardPage = () => {
   const [darkMode, setDarkMode] = useState(false);
   const [playlistUrl, setPlaylistUrl] = useState("");
   const [dailyStudyMinutes, setDailyStudyMinutes] = useState(45);
+  const [videoQuery, setVideoQuery] = useState("");
+  const [videoFilter, setVideoFilter] = useState("all");
 
   const [playlists, setPlaylists] = useState([]);
   const [selectedPlaylistId, setSelectedPlaylistId] = useState("");
@@ -27,6 +67,39 @@ const DashboardPage = () => {
     () => playlists.find((playlist) => playlist._id === selectedPlaylistId),
     [playlists, selectedPlaylistId]
   );
+
+  const progressChartData = useMemo(() => {
+    if (!analytics) {
+      return [];
+    }
+
+    return [
+      {
+        name: "Raw",
+        value: Number(analytics.rawProgressPercent || 0),
+        color: "#16a34a",
+      },
+      {
+        name: "True",
+        value: Number(analytics.trueProgressPercent || 0),
+        color: "#2563eb",
+      },
+    ];
+  }, [analytics]);
+
+  const filteredVideos = useMemo(() => {
+    const query = videoQuery.trim().toLowerCase();
+
+    return (playlistData.videos || []).filter((video) => {
+      const matchesQuery = !query || video.title.toLowerCase().includes(query);
+      const matchesFilter =
+        videoFilter === "all" ||
+        (videoFilter === "done" && video.isCompleted) ||
+        (videoFilter === "pending" && !video.isCompleted);
+
+      return matchesQuery && matchesFilter;
+    });
+  }, [playlistData.videos, videoFilter, videoQuery]);
 
   useEffect(() => {
     const init = async () => {
@@ -85,7 +158,13 @@ const DashboardPage = () => {
 
   const handleAddPlaylist = async (event) => {
     event.preventDefault();
-    if (!playlistUrl.trim()) {
+    const cleanUrl = playlistUrl.trim();
+    if (!cleanUrl) {
+      return;
+    }
+
+    if (!getPlaylistIdFromUrl(cleanUrl)) {
+      setError("Please paste a valid YouTube playlist URL containing a list parameter.");
       return;
     }
 
@@ -93,7 +172,7 @@ const DashboardPage = () => {
     setError("");
 
     try {
-      const response = await api.post("/playlists", { playlistUrl: playlistUrl.trim() });
+      const response = await api.post("/playlists", { playlistUrl: cleanUrl });
       const nextPlaylistId = response.data.data.playlistId;
       setPlaylistUrl("");
       await refreshPlaylists(nextPlaylistId);
@@ -216,7 +295,9 @@ const DashboardPage = () => {
                             onClick={() => setSelectedPlaylistId(playlist._id)}
                           >
                             <strong>{playlist.title}</strong>
-                            <p className="muted">{secondsToHuman(playlist.totalDurationSeconds)}</p>
+                            <p className="muted">
+                              {secondsToHuman(playlist.totalDurationSeconds)} total
+                            </p>
                           </button>
                         ))}
                       </div>
@@ -234,7 +315,7 @@ const DashboardPage = () => {
                           min="5"
                           max="720"
                           value={dailyStudyMinutes}
-                          onChange={(event) => setDailyStudyMinutes(event.target.value)}
+                          onChange={(event) => setDailyStudyMinutes(Number(event.target.value))}
                         />
                       </div>
                       <button
@@ -251,16 +332,67 @@ const DashboardPage = () => {
 
                 {selectedPlaylist && analytics && (
                   <section className="panel">
-                    <h3>{analytics.title}</h3>
-                    <p className="muted">{analytics.predictionMessage}</p>
-                    <div className="form-grid" style={{ marginTop: "12px" }}>
-                      <ProgressBar label="Raw progress" value={analytics.rawProgressPercent} />
-                      <ProgressBar
-                        label="True progress"
-                        value={analytics.trueProgressPercent}
-                        colorClass="bg-sky-500"
-                      />
+                    <div className="panel-head">
+                      <div>
+                        <h3>{analytics.title}</h3>
+                        <p className="muted">{analytics.predictionMessage}</p>
+                      </div>
+                      {playlistData.playlist?.thumbnailUrl ? (
+                        <img
+                          className="playlist-thumb"
+                          src={playlistData.playlist.thumbnailUrl}
+                          alt={analytics.title}
+                        />
+                      ) : null}
                     </div>
+
+                    <div className="stats-grid">
+                      <article className="stat-card">
+                        <p className="muted">Completed</p>
+                        <strong>
+                          {analytics.completedCount}/{analytics.totalCount}
+                        </strong>
+                      </article>
+                      <article className="stat-card">
+                        <p className="muted">Remaining Time</p>
+                        <strong>{secondsToHuman(analytics.remainingDurationSeconds)}</strong>
+                      </article>
+                      <article className="stat-card">
+                        <p className="muted">Streak</p>
+                        <strong>{analytics.streakCount} day(s)</strong>
+                      </article>
+                      <article className="stat-card">
+                        <p className="muted">ETA</p>
+                        <strong>{analytics.estimatedDaysRemaining} day(s)</strong>
+                      </article>
+                    </div>
+
+                    <div className="grid-two analytics-layout">
+                      <div className="form-grid">
+                        <ProgressBar label="Raw progress" value={analytics.rawProgressPercent} />
+                        <ProgressBar
+                          label="True progress"
+                          value={analytics.trueProgressPercent}
+                          tone="info"
+                        />
+                      </div>
+                      <div className="chart-wrap">
+                        <ResponsiveContainer width="100%" height={180}>
+                          <BarChart data={progressChartData}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                            <XAxis dataKey="name" />
+                            <YAxis domain={[0, 100]} />
+                            <Tooltip content={<ProgressTooltip />} />
+                            <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                              {progressChartData.map((item) => (
+                                <Cell key={item.name} fill={item.color} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
                     {analytics.suggestions?.length > 0 && (
                       <ul className="suggestion-list">
                         {analytics.suggestions.map((suggestion) => (
@@ -273,9 +405,32 @@ const DashboardPage = () => {
 
                 {playlistData.videos?.length > 0 && (
                   <section className="panel">
-                    <h3>Videos</h3>
+                    <div className="panel-head">
+                      <h3>Videos</h3>
+                      <p className="muted">{filteredVideos.length} shown</p>
+                    </div>
+
+                    <div className="video-controls">
+                      <input
+                        className="video-search"
+                        type="search"
+                        placeholder="Search video title"
+                        value={videoQuery}
+                        onChange={(event) => setVideoQuery(event.target.value)}
+                      />
+                      <select
+                        className="video-filter"
+                        value={videoFilter}
+                        onChange={(event) => setVideoFilter(event.target.value)}
+                      >
+                        <option value="all">All</option>
+                        <option value="pending">Pending</option>
+                        <option value="done">Completed</option>
+                      </select>
+                    </div>
+
                     <div className="video-grid">
-                      {playlistData.videos.map((video) => (
+                      {filteredVideos.map((video) => (
                         <VideoCard
                           key={video._id}
                           video={video}
@@ -283,6 +438,9 @@ const DashboardPage = () => {
                           onWeightChange={handleWeightChange}
                         />
                       ))}
+                      {filteredVideos.length === 0 && (
+                        <p className="muted">No videos match the current filter.</p>
+                      )}
                     </div>
                   </section>
                 )}

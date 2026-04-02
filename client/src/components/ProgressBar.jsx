@@ -1,15 +1,15 @@
-const ProgressBar = ({ label, value, colorClass = "bg-emerald-500" }) => {
+const ProgressBar = ({ label, value, tone = "success" }) => {
   const safeValue = Math.max(0, Math.min(Number(value || 0), 100));
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between text-sm">
-        <span className="text-slate-600 dark:text-slate-300">{label}</span>
-        <span className="font-semibold text-slate-800 dark:text-slate-100">{safeValue}%</span>
+    <div className="progress-item">
+      <div className="progress-head">
+        <span className="progress-label">{label}</span>
+        <span className="progress-value">{safeValue}%</span>
       </div>
-      <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-700">
+      <div className="progress-track">
         <div
-          className={`h-2 rounded-full ${colorClass} transition-all duration-500`}
+          className={`progress-fill ${tone}`}
           style={{ width: `${safeValue}%` }}
         />
       </div>
