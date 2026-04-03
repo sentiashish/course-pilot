@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useToast } from "../hooks/useToast";
+import { validateEmail } from "../utils/validation";
 import api from "../services/api";
 
 const getErrorMessage = (error) =>
@@ -16,8 +17,49 @@ const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [touched, setTouched] = useState({ email: false, password: false });
+  const [errors, setErrors] = useState({ email: "", password: "" });
 
   const from = location.state?.from?.pathname || "/dashboard";
+
+  const validateField = (name, value) => {
+    let error = "";
+    if (name === "email") {
+      if (!value.trim()) {
+        error = "Email is required";
+      } else if (!validateEmail(value)) {
+        error = "Enter a valid email address";
+      }
+    } else if (name === "password") {
+      if (!value) {
+        error = "Password is required";
+      }
+    }
+    return error;
+  };
+
+  const handleEmailChange = (value) => {
+    setEmail(value);
+    if (touched.email) {
+      setErrors((prev) => ({ ...prev, email: validateField("email", value) }));
+    }
+  };
+
+  const handlePasswordChange = (value) => {
+    setPassword(value);
+    if (touched.password) {
+      setErrors((prev) => ({ ...prev, password: validateField("password", value) }));
+    }
+  };
+
+  const handleBlur = (field) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    if (field === "email") {
+      setErrors((prev) => ({ ...prev, email: validateField("email", email) }));
+    } else if (field === "password") {
+      setErrors((prev) => ({ ...prev, password: validateField("password", password) }));
+    }
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -72,10 +114,13 @@ const LoginPage = () => {
               id="login-email"
               type="email"
               value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              onChange={(event) => handleEmailChange(event.target.value)}
+              onBlur={() => handleBlur("email")}
+              className={touched.email && errors.email ? "error" : ""}
               required
               autoComplete="email"
             />
+            {touched.email && errors.email && <p className="field-error">{errors.email}</p>}
           </div>
 
           <div className="field">
@@ -84,13 +129,16 @@ const LoginPage = () => {
               id="login-password"
               type="password"
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              onChange={(event) => handlePasswordChange(event.target.value)}
+              onBlur={() => handleBlur("password")}
+              className={touched.password && errors.password ? "error" : ""}
               required
               autoComplete="current-password"
             />
+            {touched.password && errors.password && <p className="field-error">{errors.password}</p>}
           </div>
 
-          <button className="btn btn-primary" type="submit" disabled={submitting}>
+          <button className="btn btn-primary" type="submit" disabled={submitting || Object.values(errors).some((e) => e)}>
             {submitting ? "Signing in..." : "Login"}
           </button>
         </form>

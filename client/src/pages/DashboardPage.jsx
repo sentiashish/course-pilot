@@ -6,6 +6,7 @@ import VideoCard from "../components/VideoCard";
 import EmptyPlaylistState from "../components/EmptyPlaylistState";
 import api from "../services/api";
 import { secondsToHuman } from "../utils/helpers";
+import { validatePlaylistUrl } from "../utils/validation";
 import { useToast } from "../hooks/useToast";
 
 const AnalyticsChart = lazy(() => import("../components/AnalyticsChart"));
@@ -39,6 +40,8 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [loadingVideoId, setLoadingVideoId] = useState(null);
+  const [playlistUrlError, setPlaylistUrlError] = useState("");
 
   const selectedPlaylist = useMemo(
     () => playlists.find((playlist) => playlist._id === selectedPlaylistId),
@@ -96,7 +99,7 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
     };
 
     init();
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     const loadDetails = async () => {
@@ -137,6 +140,16 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
     importFormRef.current?.querySelector('input')?.focus();
   };
 
+  const handlePlaylistUrlChange = (value) => {
+    setPlaylistUrl(value);
+    if (value.trim()) {
+      const validation = validatePlaylistUrl(value);
+      setPlaylistUrlError(validation.isValid ? "" : validation.message);
+    } else {
+      setPlaylistUrlError("");
+    }
+  };
+
   const handleAddPlaylist = async (event) => {
     event.preventDefault();
     const cleanUrl = playlistUrl.trim();
@@ -144,8 +157,9 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
       return;
     }
 
-    if (!getPlaylistIdFromUrl(cleanUrl)) {
-      toast.error("Please paste a valid YouTube playlist URL containing a list parameter.");
+    const validation = validatePlaylistUrl(cleanUrl);
+    if (!validation.isValid) {
+      setPlaylistUrlError(validation.message);
       return;
     }
 
@@ -156,6 +170,7 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
       const response = await api.post("/playlists", { playlistUrl: cleanUrl });
       const nextPlaylistId = response.data.data.playlistId;
       setPlaylistUrl("");
+      setPlaylistUrlError("");
       await refreshPlaylists(nextPlaylistId);
       toast.dismiss(toastId);
       toast.success("Playlist imported successfully!");
@@ -168,6 +183,7 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
   };
 
   const handleToggleComplete = async (videoId, isCompleted) => {
+    setLoadingVideoId(videoId);
     try {
       await api.patch(`/progress/video/${videoId}`, { isCompleted });
 
@@ -185,6 +201,8 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
       toast.success(isCompleted ? "Video marked as complete!" : "Video marked as pending.");
     } catch (nextError) {
       toast.error(getErrorMessage(nextError));
+    } finally {
+      setLoadingVideoId(null);
     }
   };
 
@@ -198,6 +216,7 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
       videos: prev.videos.map((video) => (video._id === videoId ? { ...video, weight } : video)),
     }));
 
+    setLoadingVideoId(videoId);
     try {
       await api.patch(`/progress/video/${videoId}`, { weight });
       if (selectedPlaylistId) {
@@ -207,6 +226,8 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
       toast.success("Weight updated!");
     } catch (nextError) {
       toast.error(getErrorMessage(nextError));
+    } finally {
+      setLoadingVideoId(null);
     }
   };
 
@@ -248,11 +269,13 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
                     type="url"
                     placeholder="https://www.youtube.com/playlist?list=..."
                     value={playlistUrl}
-                    onChange={(event) => setPlaylistUrl(event.target.value)}
+                    onChange={(event) => handlePlaylistUrlChange(event.target.value)}
+                    className={playlistUrlError ? "error" : ""}
                     required
                   />
+                  {playlistUrlError && <p className="field-error">{playlistUrlError}</p>}
                 </div>
-                <button className="btn btn-primary" type="submit" disabled={saving}>
+                <button className="btn btn-primary" type="submit" disabled={saving || playlistUrlError !== ""}>
                   {saving ? "Importing..." : "Import playlist"}
                 </button>
               </form>
@@ -414,6 +437,7 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
                           video={video}
                           onToggleComplete={handleToggleComplete}
                           onWeightChange={handleWeightChange}
+                          loadingVideoId={loadingVideoId}
                         />
                       ))}
                       {filteredVideos.length === 0 && (
