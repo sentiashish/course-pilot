@@ -2,10 +2,18 @@
   box-sizing: border-box;
 }
 
+html {
+  color-scheme: light;
+}
+
 body {
   margin: 0;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  min-width: 320px;
+  font-family: "Aptos", "Segoe UI Variable", "Segoe UI", sans-serif;
   color: #0f172a;
+  background: #f8fafc;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 h1,
@@ -18,4 +26,8 @@ p {
 button,
 input {
   font: inherit;
+}
+
+a {
+  color: inherit;
 }

@@ -6,9 +6,12 @@ const Navbar = ({ darkMode, onToggleDarkMode }) => {
 
   return (
     <header className="dashboard-navbar">
-      <div>
+      <div className="navbar-copy">
         <p className="navbar-subtitle">Welcome back</p>
-        <h1 className="navbar-title">{user?.name || "Learner"}</h1>
+        <div className="navbar-title-row">
+          <h1 className="navbar-title">{user?.name || "Learner"}</h1>
+          <span className="user-pill">CoursePilot</span>
+        </div>
       </div>
       <div className="navbar-actions">
         <button
@@ -16,6 +19,7 @@ const Navbar = ({ darkMode, onToggleDarkMode }) => {
           onClick={onToggleDarkMode}
           className="icon-btn"
           aria-label="Toggle theme"
+          aria-pressed={darkMode}
         >
           {darkMode ? <Sun size={18} /> : <Moon size={18} />}
         </button>

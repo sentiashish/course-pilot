@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useEffect, useMemo, useState } from "react";
 import api from "../services/api";
 
@@ -28,7 +29,7 @@ export const AuthProvider = ({ children }) => {
       try {
         const response = await api.get("/auth/me");
         setUser(response.data.data.user);
-      } catch (error) {
+      } catch {
         logout();
       } finally {
         setLoading(false);

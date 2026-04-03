@@ -7,8 +7,17 @@ const ProtectedRoute = ({ children }) => {
 
   if (loading) {
     return (
-      <div className="grid min-h-screen place-items-center text-slate-400">
-        Loading session...
+      <div className="auth-page">
+        <section className="auth-card">
+          <div className="auth-brand">
+            <span className="brand-mark">CP</span>
+            <div>
+              <p className="auth-kicker">CoursePilot</p>
+              <h1>Loading session...</h1>
+            </div>
+          </div>
+          <p className="auth-subtitle">Restoring your study workspace and saved progress.</p>
+        </section>
       </div>
     );
   }

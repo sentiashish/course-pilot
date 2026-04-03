@@ -11,18 +11,22 @@ const Sidebar = () => {
     <aside className="app-sidebar">
       <h2 className="sidebar-brand">CoursePilot</h2>
       <nav className="sidebar-nav">
-        {navItems.map(({ to, label, icon: Icon }) => (
-          <NavLink
-            key={label}
-            to={to}
-            className={({ isActive }) =>
-              `sidebar-link ${isActive ? "active" : ""}`
-            }
-          >
-            <Icon size={16} />
-            {label}
-          </NavLink>
-        ))}
+        {navItems.map((item) => {
+          const Icon = item.icon;
+
+          return (
+            <NavLink
+              key={item.label}
+              to={item.to}
+              className={({ isActive }) =>
+                `sidebar-link ${isActive ? "active" : ""}`
+              }
+            >
+              <Icon size={16} />
+              {item.label}
+            </NavLink>
+          );
+        })}
       </nav>
     </aside>
   );

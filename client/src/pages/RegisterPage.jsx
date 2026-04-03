@@ -40,8 +40,25 @@ const RegisterPage = () => {
   return (
     <main className="auth-page">
       <section className="auth-card">
-        <h1>Create account</h1>
-        <p className="auth-subtitle">Start tracking your course playlists.</p>
+        <div className="auth-brand">
+          <span className="brand-mark">CP</span>
+          <div>
+            <p className="auth-kicker">CoursePilot</p>
+            <h1>Create account</h1>
+          </div>
+        </div>
+        <p className="auth-subtitle">Start tracking your course playlists with a cleaner, faster dashboard.</p>
+
+        <div className="auth-notes">
+          <div>
+            <strong>Build a plan</strong>
+            <p>Import a playlist, set your study pace, and follow the next best step.</p>
+          </div>
+          <div>
+            <strong>Keep momentum</strong>
+            <p>Watch completion, pace, and prediction signals update in real time.</p>
+          </div>
+        </div>
 
         <form className="form-grid" onSubmit={handleSubmit}>
           <div className="field">

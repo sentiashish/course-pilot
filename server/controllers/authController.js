@@ -2,9 +2,10 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const asyncHandler = require("../utils/asyncHandler");
+const { jwtSecret } = require("../config/env");
 
 const generateToken = (userId) =>
-  jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: "7d" });
+  jwt.sign({ userId }, jwtSecret, { expiresIn: "7d" });
 
 const signup = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;

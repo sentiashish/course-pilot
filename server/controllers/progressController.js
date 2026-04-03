@@ -26,7 +26,14 @@ const updateVideoProgress = asyncHandler(async (req, res) => {
   }
 
   if (typeof weight !== "undefined") {
-    video.weight = Number(weight);
+    const numericWeight = Number(weight);
+    if (!Number.isFinite(numericWeight) || numericWeight < 0.25 || numericWeight > 5) {
+      const error = new Error("weight must be between 0.25 and 5");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    video.weight = numericWeight;
   }
 
   if (typeof isCompleted === "boolean") {
@@ -102,16 +109,17 @@ const getPlaylistAnalytics = asyncHandler(async (req, res) => {
 
 const updateDailyStudyMinutes = asyncHandler(async (req, res) => {
   const { dailyStudyMinutes } = req.body;
+  const numericDailyStudyMinutes = Number(dailyStudyMinutes);
 
-  if (!dailyStudyMinutes || Number(dailyStudyMinutes) < 5) {
-    const error = new Error("dailyStudyMinutes must be at least 5");
+  if (!Number.isFinite(numericDailyStudyMinutes) || numericDailyStudyMinutes < 5 || numericDailyStudyMinutes > 720) {
+    const error = new Error("dailyStudyMinutes must be between 5 and 720");
     error.statusCode = 400;
     throw error;
   }
 
   const user = await User.findByIdAndUpdate(
     req.user._id,
-    { dailyStudyMinutes: Number(dailyStudyMinutes) },
+    { dailyStudyMinutes: numericDailyStudyMinutes },
     { new: true }
   );
 

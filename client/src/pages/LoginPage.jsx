@@ -41,8 +41,25 @@ const LoginPage = () => {
   return (
     <main className="auth-page">
       <section className="auth-card">
-        <h1>Welcome back</h1>
-        <p className="auth-subtitle">Login to continue your study plan.</p>
+        <div className="auth-brand">
+          <span className="brand-mark">CP</span>
+          <div>
+            <p className="auth-kicker">CoursePilot</p>
+            <h1>Welcome back</h1>
+          </div>
+        </div>
+        <p className="auth-subtitle">Login to continue your study plan and keep your progress in view.</p>
+
+        <div className="auth-notes">
+          <div>
+            <strong>Track faster</strong>
+            <p>Monitor playlists, pace, and completion at a glance.</p>
+          </div>
+          <div>
+            <strong>Stay focused</strong>
+            <p>Keep the next lesson, the total load, and your streak visible.</p>
+          </div>
+        </div>
 
         <form className="form-grid" onSubmit={handleSubmit}>
           <div className="field">

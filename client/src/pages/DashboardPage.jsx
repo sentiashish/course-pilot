@@ -1,20 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import Navbar from "../components/Navbar";
 import ProgressBar from "../components/ProgressBar";
 import Sidebar from "../components/Sidebar";
 import VideoCard from "../components/VideoCard";
 import api from "../services/api";
 import { secondsToHuman } from "../utils/helpers";
+
+const AnalyticsChart = lazy(() => import("../components/AnalyticsChart"));
 
 const getErrorMessage = (error) =>
   error?.response?.data?.message || "Something went wrong. Please try again.";
@@ -29,26 +21,7 @@ const getPlaylistIdFromUrl = (playlistUrl) => {
   }
 };
 
-const ProgressTooltip = ({ active, payload }) => {
-  if (!active || !payload?.length) {
-    return null;
-  }
-
-  const point = payload[0]?.payload;
-  if (!point) {
-    return null;
-  }
-
-  return (
-    <div className="chart-tooltip">
-      <strong>{point.name}</strong>
-      <p>{point.value}% complete</p>
-    </div>
-  );
-};
-
-const DashboardPage = () => {
-  const [darkMode, setDarkMode] = useState(false);
+const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
   const [playlistUrl, setPlaylistUrl] = useState("");
   const [dailyStudyMinutes, setDailyStudyMinutes] = useState(45);
   const [videoQuery, setVideoQuery] = useState("");
@@ -247,7 +220,7 @@ const DashboardPage = () => {
         <Sidebar />
 
         <main className="dashboard-main">
-          <Navbar darkMode={darkMode} onToggleDarkMode={() => setDarkMode((prev) => !prev)} />
+          <Navbar darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} />
 
           <section className="dashboard-content">
             <section className="panel">
@@ -377,19 +350,11 @@ const DashboardPage = () => {
                         />
                       </div>
                       <div className="chart-wrap">
-                        <ResponsiveContainer width="100%" height={180}>
-                          <BarChart data={progressChartData}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                            <XAxis dataKey="name" />
-                            <YAxis domain={[0, 100]} />
-                            <Tooltip content={<ProgressTooltip />} />
-                            <Bar dataKey="value" radius={[8, 8, 0, 0]}>
-                              {progressChartData.map((item) => (
-                                <Cell key={item.name} fill={item.color} />
-                              ))}
-                            </Bar>
-                          </BarChart>
-                        </ResponsiveContainer>
+                        <Suspense
+                          fallback={<p className="muted chart-loading">Loading analytics chart...</p>}
+                        >
+                          <AnalyticsChart data={progressChartData} />
+                        </Suspense>
                       </div>
                     </div>
 
