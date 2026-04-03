@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { useToast } from "../hooks/useToast";
 import api from "../services/api";
 
 const getErrorMessage = (error) =>
@@ -9,17 +10,17 @@ const getErrorMessage = (error) =>
 const RegisterPage = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const toast = useToast();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setError("");
     setSubmitting(true);
+    const toastId = toast.loading("Creating account...");
 
     try {
       const response = await api.post("/auth/signup", {
@@ -29,9 +30,12 @@ const RegisterPage = () => {
       });
 
       login(response.data.data);
+      toast.dismiss(toastId);
+      toast.success("Account created successfully!");
       navigate("/dashboard", { replace: true });
     } catch (nextError) {
-      setError(getErrorMessage(nextError));
+      toast.dismiss(toastId);
+      toast.error(getErrorMessage(nextError));
     } finally {
       setSubmitting(false);
     }
@@ -98,8 +102,6 @@ const RegisterPage = () => {
               autoComplete="new-password"
             />
           </div>
-
-          {error && <p className="error-text">{error}</p>}
 
           <button className="btn btn-primary" type="submit" disabled={submitting}>
             {submitting ? "Creating account..." : "Sign up"}

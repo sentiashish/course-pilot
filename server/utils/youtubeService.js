@@ -3,6 +3,7 @@ const { youtubeApiKey } = require("../config/env");
 
 const YOUTUBE_API_BASE = "https://www.googleapis.com/youtube/v3";
 const YOUTUBE_API_KEY = youtubeApiKey;
+const PLACEHOLDER_KEY_PATTERN = /replace_with|your_.*_key|your_.*_here/i;
 
 const buildYouTubeRequest = () => ({
   timeout: 10000,
@@ -14,6 +15,14 @@ const buildYouTubeRequest = () => ({
 const ensureYouTubeApiKey = () => {
   if (!YOUTUBE_API_KEY) {
     const error = new Error("YouTube API key is not configured");
+    error.statusCode = 500;
+    throw error;
+  }
+
+  if (PLACEHOLDER_KEY_PATTERN.test(String(YOUTUBE_API_KEY))) {
+    const error = new Error(
+      "YOUTUBE_API_KEY is a placeholder. Set a real Google YouTube Data API v3 key in server/.env"
+    );
     error.statusCode = 500;
     throw error;
   }

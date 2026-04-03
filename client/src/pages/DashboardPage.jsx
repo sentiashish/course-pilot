@@ -5,6 +5,7 @@ import Sidebar from "../components/Sidebar";
 import VideoCard from "../components/VideoCard";
 import api from "../services/api";
 import { secondsToHuman } from "../utils/helpers";
+import { useToast } from "../hooks/useToast";
 
 const AnalyticsChart = lazy(() => import("../components/AnalyticsChart"));
 
@@ -22,6 +23,7 @@ const getPlaylistIdFromUrl = (playlistUrl) => {
 };
 
 const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
+  const toast = useToast();
   const [playlistUrl, setPlaylistUrl] = useState("");
   const [dailyStudyMinutes, setDailyStudyMinutes] = useState(45);
   const [videoQuery, setVideoQuery] = useState("");
@@ -34,7 +36,6 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
 
   const selectedPlaylist = useMemo(
     () => playlists.find((playlist) => playlist._id === selectedPlaylistId),
@@ -77,7 +78,6 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
   useEffect(() => {
     const init = async () => {
       setLoading(true);
-      setError("");
       try {
         const response = await api.get("/playlists");
         const items = response.data.data || [];
@@ -86,14 +86,14 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
           setSelectedPlaylistId(items[0]._id);
         }
       } catch (nextError) {
-        setError(getErrorMessage(nextError));
+        toast.error(getErrorMessage(nextError));
       } finally {
         setLoading(false);
       }
     };
 
     init();
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     const loadDetails = async () => {
@@ -113,12 +113,12 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
         setAnalytics(analyticsResponse.data.data);
         setDailyStudyMinutes(analyticsResponse.data.data.dailyStudyMinutes);
       } catch (nextError) {
-        setError(getErrorMessage(nextError));
+        toast.error(getErrorMessage(nextError));
       }
     };
 
     loadDetails();
-  }, [selectedPlaylistId]);
+  }, [selectedPlaylistId, toast]);
 
   const refreshPlaylists = async (nextSelectedId = null) => {
     const response = await api.get("/playlists");
@@ -137,27 +137,29 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
     }
 
     if (!getPlaylistIdFromUrl(cleanUrl)) {
-      setError("Please paste a valid YouTube playlist URL containing a list parameter.");
+      toast.error("Please paste a valid YouTube playlist URL containing a list parameter.");
       return;
     }
 
     setSaving(true);
-    setError("");
+    const toastId = toast.loading("Importing playlist...");
 
     try {
       const response = await api.post("/playlists", { playlistUrl: cleanUrl });
       const nextPlaylistId = response.data.data.playlistId;
       setPlaylistUrl("");
       await refreshPlaylists(nextPlaylistId);
+      toast.dismiss(toastId);
+      toast.success("Playlist imported successfully!");
     } catch (nextError) {
-      setError(getErrorMessage(nextError));
+      toast.dismiss(toastId);
+      toast.error(getErrorMessage(nextError));
     } finally {
       setSaving(false);
     }
   };
 
   const handleToggleComplete = async (videoId, isCompleted) => {
-    setError("");
     try {
       await api.patch(`/progress/video/${videoId}`, { isCompleted });
 
@@ -172,8 +174,9 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
         const analyticsResponse = await api.get(`/progress/playlist/${selectedPlaylistId}`);
         setAnalytics(analyticsResponse.data.data);
       }
+      toast.success(isCompleted ? "Video marked as complete!" : "Video marked as pending.");
     } catch (nextError) {
-      setError(getErrorMessage(nextError));
+      toast.error(getErrorMessage(nextError));
     }
   };
 
@@ -193,22 +196,26 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
         const analyticsResponse = await api.get(`/progress/playlist/${selectedPlaylistId}`);
         setAnalytics(analyticsResponse.data.data);
       }
+      toast.success("Weight updated!");
     } catch (nextError) {
-      setError(getErrorMessage(nextError));
+      toast.error(getErrorMessage(nextError));
     }
   };
 
   const handleStudyMinutesUpdate = async () => {
     setSaving(true);
-    setError("");
+    const toastId = toast.loading("Updating study target...");
     try {
       await api.patch("/progress/study-minutes", { dailyStudyMinutes: Number(dailyStudyMinutes) });
       if (selectedPlaylistId) {
         const analyticsResponse = await api.get(`/progress/playlist/${selectedPlaylistId}`);
         setAnalytics(analyticsResponse.data.data);
       }
+      toast.dismiss(toastId);
+      toast.success("Study target updated!");
     } catch (nextError) {
-      setError(getErrorMessage(nextError));
+      toast.dismiss(toastId);
+      toast.error(getErrorMessage(nextError));
     } finally {
       setSaving(false);
     }
@@ -242,8 +249,6 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
                 </button>
               </form>
             </section>
-
-            {error && <p className="error-text">{error}</p>}
 
             {loading ? (
               <section className="panel">

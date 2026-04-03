@@ -12,12 +12,19 @@ if (missingVariables.length > 0) {
 }
 
 const parseCorsOrigins = () => {
-  const rawOrigins = process.env.CORS_ORIGIN || process.env.CLIENT_ORIGIN || "http://localhost:5173";
+  const rawOrigins = process.env.CORS_ORIGIN || process.env.CLIENT_ORIGIN || "";
 
-  return rawOrigins
+  const configured = rawOrigins
     .split(",")
     .map((origin) => origin.trim())
     .filter(Boolean);
+
+  const defaults = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+  ];
+
+  return [...new Set([...configured, ...defaults])];
 };
 
 module.exports = {
