@@ -1,8 +1,9 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState, useRef } from "react";
 import Navbar from "../components/Navbar";
 import ProgressBar from "../components/ProgressBar";
 import Sidebar from "../components/Sidebar";
 import VideoCard from "../components/VideoCard";
+import EmptyPlaylistState from "../components/EmptyPlaylistState";
 import api from "../services/api";
 import { secondsToHuman } from "../utils/helpers";
 import { useToast } from "../hooks/useToast";
@@ -24,6 +25,8 @@ const getPlaylistIdFromUrl = (playlistUrl) => {
 
 const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
   const toast = useToast();
+  const importFormRef = useRef(null);
+
   const [playlistUrl, setPlaylistUrl] = useState("");
   const [dailyStudyMinutes, setDailyStudyMinutes] = useState(45);
   const [videoQuery, setVideoQuery] = useState("");
@@ -129,6 +132,11 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
     setSelectedPlaylistId(nextSelectedId || selectedPlaylistId || fallbackId);
   };
 
+  const scrollToImportForm = () => {
+    importFormRef.current?.scrollIntoView({ behavior: "smooth" });
+    importFormRef.current?.querySelector('input')?.focus();
+  };
+
   const handleAddPlaylist = async (event) => {
     event.preventDefault();
     const cleanUrl = playlistUrl.trim();
@@ -230,7 +238,7 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
           <Navbar darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} />
 
           <section className="dashboard-content">
-            <section className="panel">
+            <section className="panel" ref={importFormRef}>
               <h2>Import playlist</h2>
               <form className="form-grid" onSubmit={handleAddPlaylist}>
                 <div className="field">
@@ -256,12 +264,12 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
               </section>
             ) : (
               <>
-                <section className="grid-two">
-                  <article className="panel">
-                    <h3>Your playlists</h3>
-                    {playlists.length === 0 ? (
-                      <p className="muted">No playlists yet. Add one to begin.</p>
-                    ) : (
+                {playlists.length === 0 ? (
+                  <EmptyPlaylistState onCtaClick={scrollToImportForm} />
+                ) : (
+                  <section className="grid-two">
+                    <article className="panel">
+                      <h3>Your playlists</h3>
                       <div className="playlist-list">
                         {playlists.map((playlist) => (
                           <button
@@ -279,11 +287,10 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
                           </button>
                         ))}
                       </div>
-                    )}
-                  </article>
+                    </article>
 
-                  <article className="panel">
-                    <h3>Study pace</h3>
+                    <article className="panel">
+                      <h3>Study pace</h3>
                     <div className="form-grid">
                       <div className="field">
                         <label htmlFor="study-minutes">Daily study minutes</label>
@@ -305,8 +312,9 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
                         Save study target
                       </button>
                     </div>
-                  </article>
-                </section>
+                    </article>
+                  </section>
+                )}
 
                 {selectedPlaylist && analytics && (
                   <section className="panel">
