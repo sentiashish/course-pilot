@@ -1,6 +1,6 @@
 require("dotenv").config();
 
-const requiredVariables = ["MONGODB_URI", "JWT_SECRET", "YOUTUBE_API_KEY"];
+const requiredVariables = ["MONGODB_URI", "JWT_SECRET"];
 const missingVariables = requiredVariables.filter(
   (name) => !process.env[name] || !String(process.env[name]).trim()
 );
@@ -32,6 +32,6 @@ module.exports = {
   port: Number(process.env.PORT || 5000),
   mongoUri: process.env.MONGODB_URI,
   jwtSecret: process.env.JWT_SECRET,
-  youtubeApiKey: process.env.YOUTUBE_API_KEY,
+  youtubeApiKey: (process.env.YOUTUBE_API_KEY || "").trim(),
   corsOrigins: parseCorsOrigins(),
 };

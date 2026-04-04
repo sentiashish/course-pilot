@@ -5,6 +5,15 @@ const YOUTUBE_API_BASE = "https://www.googleapis.com/youtube/v3";
 const YOUTUBE_API_KEY = youtubeApiKey;
 const PLACEHOLDER_KEY_PATTERN = /replace_with|your_.*_key|your_.*_here/i;
 
+const createAppError = (message, statusCode = 500, code) => {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  if (code) {
+    error.code = code;
+  }
+  return error;
+};
+
 const buildYouTubeRequest = () => ({
   timeout: 10000,
   params: {
@@ -14,42 +23,85 @@ const buildYouTubeRequest = () => ({
 
 const ensureYouTubeApiKey = () => {
   if (!YOUTUBE_API_KEY) {
-    const error = new Error("YouTube API key is not configured");
-    error.statusCode = 500;
-    throw error;
+    throw createAppError("API key not configured", 500, "YOUTUBE_API_KEY_MISSING");
   }
 
   if (PLACEHOLDER_KEY_PATTERN.test(String(YOUTUBE_API_KEY))) {
-    const error = new Error(
-      "YOUTUBE_API_KEY is a placeholder. Set a real Google YouTube Data API v3 key in server/.env"
-    );
-    error.statusCode = 500;
-    throw error;
+    throw createAppError("API key not configured", 500, "YOUTUBE_API_KEY_PLACEHOLDER");
   }
 };
 
 const normalizeYouTubeError = (error, fallbackMessage) => {
-  if (error.response?.data?.error?.message) {
-    const nextError = new Error(error.response.data.error.message);
-    nextError.statusCode = error.response.status || 502;
-    return nextError;
+  const reason = error.response?.data?.error?.errors?.[0]?.reason;
+  const upstreamMessage = String(error.response?.data?.error?.message || "");
+
+  if (["keyInvalid", "forbidden"].includes(reason) || /api key/i.test(upstreamMessage)) {
+    return createAppError("API key not configured", 500, "YOUTUBE_API_KEY_INVALID");
   }
 
-  const nextError = new Error(fallbackMessage);
-  nextError.statusCode = error.code === "ECONNABORTED" ? 504 : 502;
-  return nextError;
+  if (
+    [
+      "quotaExceeded",
+      "dailyLimitExceeded",
+      "dailyLimitExceededUnreg",
+      "userRateLimitExceeded",
+      "rateLimitExceeded",
+    ].includes(reason)
+  ) {
+    return createAppError("YouTube quota exceeded. Please try again later.", 429, "YOUTUBE_QUOTA_EXCEEDED");
+  }
+
+  if (["playlistNotFound", "notFound"].includes(reason)) {
+    return createAppError("Invalid playlist link", 404, "YOUTUBE_PLAYLIST_NOT_FOUND");
+  }
+
+  if (["invalidPlaylistId", "invalidParameter", "badRequest"].includes(reason)) {
+    return createAppError("Invalid playlist link", 400, "YOUTUBE_PLAYLIST_INVALID");
+  }
+
+  if (error.code === "ECONNABORTED") {
+    return createAppError("YouTube request timed out. Please try again.", 504, "YOUTUBE_TIMEOUT");
+  }
+
+  return createAppError(fallbackMessage || "Unable to fetch data from YouTube", 502, "YOUTUBE_UPSTREAM_ERROR");
 };
 
 const extractPlaylistId = (url) => {
   try {
-    const parsed = new URL(String(url).trim());
+    const raw = String(url || "").trim();
+    if (!raw) {
+      throw createAppError("Invalid playlist link", 400, "PLAYLIST_URL_EMPTY");
+    }
+
+    // Allow direct playlist IDs as input.
+    if (/^[A-Za-z0-9_-]{10,}$/.test(raw) && !raw.includes("http")) {
+      return raw;
+    }
+
+    const parsed = new URL(raw);
+    const hostname = parsed.hostname.toLowerCase();
+    const isYouTubeHost =
+      hostname === "youtube.com" ||
+      hostname === "www.youtube.com" ||
+      hostname === "m.youtube.com" ||
+      hostname === "music.youtube.com" ||
+      hostname === "youtu.be";
+
+    if (!isYouTubeHost) {
+      throw createAppError("Invalid playlist link", 400, "PLAYLIST_URL_HOST_INVALID");
+    }
+
     const listId = parsed.searchParams.get("list");
     if (!listId) {
-      throw new Error("Invalid YouTube playlist URL");
+      throw createAppError("Invalid playlist link", 400, "PLAYLIST_URL_LIST_MISSING");
     }
+
     return listId;
   } catch (error) {
-    throw new Error("Invalid playlist URL format");
+    if (error.statusCode) {
+      throw error;
+    }
+    throw createAppError("Invalid playlist link", 400, "PLAYLIST_URL_INVALID");
   }
 };
 

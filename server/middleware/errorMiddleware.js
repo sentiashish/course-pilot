@@ -6,9 +6,16 @@ const notFound = (req, res, next) => {
 
 const errorHandler = (err, req, res, next) => {
   const statusCode = err.statusCode || 500;
+  const isOperational = Boolean(err.code) || statusCode < 500;
+  const message =
+    statusCode >= 500 && !isOperational
+      ? "Something went wrong, try again"
+      : err.message || "Something went wrong, try again";
+
   res.status(statusCode).json({
     success: false,
-    message: err.message || "Server error",
+    message,
+    code: err.code || "UNEXPECTED_ERROR",
     stack: process.env.NODE_ENV === "production" ? undefined : err.stack,
   });
 };

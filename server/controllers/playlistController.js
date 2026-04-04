@@ -9,13 +9,15 @@ const {
 
 const addPlaylist = asyncHandler(async (req, res) => {
   const { playlistUrl } = req.body;
-  if (!playlistUrl) {
-    const error = new Error("playlistUrl is required");
+  const cleanPlaylistUrl = String(playlistUrl || "").trim();
+
+  if (!cleanPlaylistUrl) {
+    const error = new Error("Invalid playlist link");
     error.statusCode = 400;
     throw error;
   }
 
-  const youtubePlaylistId = extractPlaylistId(playlistUrl);
+  const youtubePlaylistId = extractPlaylistId(cleanPlaylistUrl);
   const existing = await Playlist.findOne({
     user: req.user._id,
     youtubePlaylistId,

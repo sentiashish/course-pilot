@@ -14,16 +14,6 @@ const AnalyticsChart = lazy(() => import("../components/AnalyticsChart"));
 const getErrorMessage = (error) =>
   error?.response?.data?.message || "Something went wrong. Please try again.";
 
-const getPlaylistIdFromUrl = (playlistUrl) => {
-  try {
-    const parsed = new URL(playlistUrl);
-    const listId = parsed.searchParams.get("list");
-    return listId;
-  } catch {
-    return null;
-  }
-};
-
 const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
   const toast = useToast();
   const importFormRef = useRef(null);
@@ -42,6 +32,7 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
   const [saving, setSaving] = useState(false);
   const [loadingVideoId, setLoadingVideoId] = useState(null);
   const [playlistUrlError, setPlaylistUrlError] = useState("");
+  const [youtubeConfigured, setYoutubeConfigured] = useState(true);
 
   const selectedPlaylist = useMemo(
     () => playlists.find((playlist) => playlist._id === selectedPlaylistId),
@@ -99,6 +90,19 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
     };
 
     init();
+  }, []);
+
+  useEffect(() => {
+    const loadHealth = async () => {
+      try {
+        const response = await api.get("/health");
+        setYoutubeConfigured(Boolean(response.data?.integrations?.youtubeConfigured));
+      } catch {
+        setYoutubeConfigured(true);
+      }
+    };
+
+    loadHealth();
   }, []);
 
   useEffect(() => {
@@ -261,6 +265,11 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
           <section className="dashboard-content">
             <section className="panel" ref={importFormRef}>
               <h2>Import playlist</h2>
+              {!youtubeConfigured && (
+                <div className="integration-warning">
+                  YouTube API key is not configured yet. Playlist import will stay disabled until a real key is added in server/.env.
+                </div>
+              )}
               <form className="form-grid" onSubmit={handleAddPlaylist}>
                 <div className="field">
                   <label htmlFor="playlist-url">YouTube playlist URL</label>
@@ -275,7 +284,11 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
                   />
                   {playlistUrlError && <p className="field-error">{playlistUrlError}</p>}
                 </div>
-                <button className="btn btn-primary" type="submit" disabled={saving || playlistUrlError !== ""}>
+                <button
+                  className="btn btn-primary"
+                  type="submit"
+                  disabled={saving || playlistUrlError !== "" || !youtubeConfigured}
+                >
                   {saving ? "Importing..." : "Import playlist"}
                 </button>
               </form>

@@ -94,6 +94,17 @@
   font-size: 0.9rem;
 }
 
+.integration-warning {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  background: rgba(245, 158, 11, 0.08);
+  color: #92400e;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
 .field input.error {
   border-color: #ef4444;
   background-color: rgba(239, 68, 68, 0.02);
@@ -609,6 +620,12 @@
   background: #111827;
   border-color: #243042;
   color: #e2e8f0;
+}
+
+.app-shell.dark .integration-warning {
+  border-color: rgba(245, 158, 11, 0.22);
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
 }
 
 .app-shell.dark .video-card:hover {
