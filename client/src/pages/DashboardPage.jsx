@@ -90,7 +90,7 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
     };
 
     init();
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     const loadHealth = async () => {
