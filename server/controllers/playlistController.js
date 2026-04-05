@@ -1,5 +1,6 @@
 const Playlist = require("../models/Playlist");
 const Video = require("../models/Video");
+const mongoose = require("mongoose");
 const asyncHandler = require("../utils/asyncHandler");
 const {
   extractPlaylistId,
@@ -32,27 +33,39 @@ const addPlaylist = asyncHandler(async (req, res) => {
   const playlistDetails = await getPlaylistDetails(youtubePlaylistId);
   const videos = await getPlaylistVideos(youtubePlaylistId);
 
+  if (videos.length === 0) {
+    const error = new Error("No playable videos found in this playlist");
+    error.statusCode = 400;
+    throw error;
+  }
+
   const totalDurationSeconds = videos.reduce(
     (sum, video) => sum + (video.durationSeconds || 0),
     0
   );
 
-  const playlist = await Playlist.create({
-    user: req.user._id,
-    youtubePlaylistId,
-    title: playlistDetails.title,
-    description: playlistDetails.description,
-    thumbnailUrl: playlistDetails.thumbnailUrl,
-    totalDurationSeconds,
-  });
+  let playlist;
+  try {
+    playlist = await Playlist.create({
+      user: req.user._id,
+      youtubePlaylistId,
+      title: playlistDetails.title,
+      description: playlistDetails.description,
+      thumbnailUrl: playlistDetails.thumbnailUrl,
+      totalDurationSeconds,
+    });
 
-  if (videos.length > 0) {
     await Video.insertMany(
       videos.map((video) => ({
         ...video,
         playlist: playlist._id,
       }))
     );
+  } catch (error) {
+    if (playlist?._id) {
+      await Playlist.findByIdAndDelete(playlist._id);
+    }
+    throw error;
   }
 
   res.status(201).json({
@@ -72,6 +85,12 @@ const getPlaylists = asyncHandler(async (req, res) => {
 });
 
 const getPlaylistById = asyncHandler(async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.playlistId)) {
+    const error = new Error("Invalid playlist identifier");
+    error.statusCode = 400;
+    throw error;
+  }
+
   const playlist = await Playlist.findOne({
     _id: req.params.playlistId,
     user: req.user._id,

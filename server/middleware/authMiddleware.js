@@ -27,6 +27,10 @@ const protect = asyncHandler(async (req, res, next) => {
     req.user = user;
     next();
   } catch (err) {
+    if (err.name !== "JsonWebTokenError" && err.name !== "TokenExpiredError") {
+      throw err;
+    }
+
     const error = new Error("Invalid or expired token");
     error.statusCode = 401;
     throw error;

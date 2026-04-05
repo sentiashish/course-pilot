@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const Playlist = require("../models/Playlist");
 const Video = require("../models/Video");
+const mongoose = require("mongoose");
 const asyncHandler = require("../utils/asyncHandler");
 const {
   calculatePlaylistMetrics,
@@ -11,6 +12,12 @@ const {
 const updateVideoProgress = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
   const { isCompleted, weight } = req.body;
+
+  if (!mongoose.isValidObjectId(videoId)) {
+    const error = new Error("Invalid video identifier");
+    error.statusCode = 400;
+    throw error;
+  }
 
   const video = await Video.findById(videoId).populate("playlist");
   if (!video) {
@@ -64,6 +71,12 @@ const updateVideoProgress = asyncHandler(async (req, res) => {
 });
 
 const getPlaylistAnalytics = asyncHandler(async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.playlistId)) {
+    const error = new Error("Invalid playlist identifier");
+    error.statusCode = 400;
+    throw error;
+  }
+
   const playlist = await Playlist.findOne({
     _id: req.params.playlistId,
     user: req.user._id,

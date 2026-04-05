@@ -51,11 +51,28 @@ app.use("/api/progress", progressRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
+let server;
+
 const startServer = async () => {
   await connectDB();
-  app.listen(port, () => {
+  server = app.listen(port, () => {
     console.log(`Server running on port ${port}`);
   });
 };
 
-startServer();
+startServer().catch((error) => {
+  console.error(`Failed to start server: ${error.message}`);
+  process.exit(1);
+});
+
+const shutdown = (signal) => {
+  console.log(`${signal} received, shutting down server`);
+  if (server) {
+    server.close(() => process.exit(0));
+    return;
+  }
+  process.exit(0);
+};
+
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));

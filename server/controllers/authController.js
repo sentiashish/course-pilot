@@ -9,24 +9,40 @@ const generateToken = (userId) =>
 
 const signup = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
+  const normalizedName = String(name || "").trim();
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  const normalizedPassword = String(password || "");
 
-  if (!name || !email || !password) {
+  if (!normalizedName || !normalizedEmail || !normalizedPassword) {
     const error = new Error("Name, email, and password are required");
     error.statusCode = 400;
     throw error;
   }
 
-  const exists = await User.findOne({ email: email.toLowerCase() });
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailPattern.test(normalizedEmail)) {
+    const error = new Error("Please provide a valid email address");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (normalizedPassword.length < 8) {
+    const error = new Error("Password must be at least 8 characters long");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const exists = await User.findOne({ email: normalizedEmail });
   if (exists) {
     const error = new Error("Email already in use");
     error.statusCode = 409;
     throw error;
   }
 
-  const hashedPassword = await bcrypt.hash(password, 12);
+  const hashedPassword = await bcrypt.hash(normalizedPassword, 12);
   const user = await User.create({
-    name,
-    email: email.toLowerCase(),
+    name: normalizedName,
+    email: normalizedEmail,
     password: hashedPassword,
   });
 
@@ -47,14 +63,16 @@ const signup = asyncHandler(async (req, res) => {
 
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  const normalizedPassword = String(password || "");
 
-  if (!email || !password) {
+  if (!normalizedEmail || !normalizedPassword) {
     const error = new Error("Email and password are required");
     error.statusCode = 400;
     throw error;
   }
 
-  const user = await User.findOne({ email: email.toLowerCase() }).select("+password");
+  const user = await User.findOne({ email: normalizedEmail }).select("+password");
 
   if (!user) {
     const error = new Error("Invalid credentials");
@@ -62,7 +80,7 @@ const login = asyncHandler(async (req, res) => {
     throw error;
   }
 
-  const isMatch = await bcrypt.compare(password, user.password);
+  const isMatch = await bcrypt.compare(normalizedPassword, user.password);
 
   if (!isMatch) {
     const error = new Error("Invalid credentials");
