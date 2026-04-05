@@ -40,7 +40,13 @@ export const validatePlaylistUrl = (url) => {
   
   try {
     const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    const isYouTubeHost = ["youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com", "youtu.be"].includes(host);
     const listId = parsed.searchParams.get("list");
+
+    if (!isYouTubeHost) {
+      return { isValid: false, message: "Enter a valid YouTube playlist URL" };
+    }
     
     if (!listId) {
       return { isValid: false, message: "URL must contain a valid playlist ID" };

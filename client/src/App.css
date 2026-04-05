@@ -583,7 +583,7 @@
   background: #2563eb;
 }
 
-.video-controls {
+.video-list-controls {
   display: grid;
   grid-template-columns: 1fr 180px;
   gap: 10px;
@@ -724,7 +724,7 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .video-controls {
+  .video-list-controls {
     grid-template-columns: 1fr;
   }
 }

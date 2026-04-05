@@ -1,5 +1,7 @@
 const calculatePlaylistMetrics = (videos = []) => {
   const safeVideos = Array.isArray(videos) ? videos : [];
+  const totalCount = safeVideos.length;
+  const completedCount = safeVideos.filter((video) => Boolean(video.isCompleted)).length;
 
   const totalDurationSeconds = safeVideos.reduce(
     (sum, video) => sum + (video.durationSeconds || 0),
@@ -37,6 +39,8 @@ const calculatePlaylistMetrics = (videos = []) => {
   );
 
   return {
+    totalCount,
+    completedCount,
     totalDurationSeconds,
     watchedDurationSeconds,
     remainingDurationSeconds,

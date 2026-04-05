@@ -236,6 +236,11 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
   };
 
   const handleStudyMinutesUpdate = async () => {
+    if (!Number.isFinite(dailyStudyMinutes) || dailyStudyMinutes < 5 || dailyStudyMinutes > 720) {
+      toast.error("Daily study minutes must be between 5 and 720.");
+      return;
+    }
+
     setSaving(true);
     const toastId = toast.loading("Updating study target...");
     try {
@@ -336,7 +341,10 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
                           min="5"
                           max="720"
                           value={dailyStudyMinutes}
-                          onChange={(event) => setDailyStudyMinutes(Number(event.target.value))}
+                          onChange={(event) => {
+                            const nextValue = Number(event.target.value);
+                            setDailyStudyMinutes(Number.isFinite(nextValue) ? nextValue : 0);
+                          }}
                         />
                       </div>
                       <button
@@ -424,7 +432,7 @@ const DashboardPage = ({ darkMode, onToggleDarkMode }) => {
                       <p className="muted">{filteredVideos.length} shown</p>
                     </div>
 
-                    <div className="video-controls">
+                    <div className="video-list-controls">
                       <input
                         className="video-search"
                         type="search"

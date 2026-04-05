@@ -35,6 +35,17 @@ const normalizeMongooseError = (err) => {
   return null;
 };
 
+const defaultCodeByStatus = {
+  400: "BAD_REQUEST",
+  401: "UNAUTHORIZED",
+  403: "FORBIDDEN",
+  404: "NOT_FOUND",
+  409: "CONFLICT",
+  422: "UNPROCESSABLE_ENTITY",
+  429: "RATE_LIMITED",
+  500: "INTERNAL_SERVER_ERROR",
+};
+
 const errorHandler = (err, req, res, next) => {
   const normalizedDbError = normalizeMongooseError(err);
   const statusCode = normalizedDbError?.statusCode || err.statusCode || 500;
@@ -48,7 +59,11 @@ const errorHandler = (err, req, res, next) => {
   res.status(statusCode).json({
     success: false,
     message,
-    code: normalizedDbError?.code || err.code || "UNEXPECTED_ERROR",
+    code:
+      normalizedDbError?.code ||
+      err.code ||
+      defaultCodeByStatus[statusCode] ||
+      "UNEXPECTED_ERROR",
     stack: process.env.NODE_ENV === "production" ? undefined : err.stack,
   });
 };
